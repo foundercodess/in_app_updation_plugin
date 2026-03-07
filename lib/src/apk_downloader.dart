@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Handles downloading the APK file from a remote URL.
@@ -17,14 +18,22 @@ class ApkDownloader {
     String url, {
     void Function(int received, int total)? onProgress,
   }) async {
-    // Use cache directory - reliably mapped in Android FileProvider
+    debugPrint('[in_app_updation] Downloading APK: $url');
+
     final dir = await getTemporaryDirectory();
     final savePath = '${dir.path}/update.apk';
+    debugPrint('[in_app_updation] Save path: $savePath');
 
     await _dio.download(
       url,
       savePath,
-      onReceiveProgress: onProgress,
+      onReceiveProgress: (received, total) {
+        if (total > 0) {
+          final pct = (received / total * 100).toStringAsFixed(1);
+          debugPrint('[in_app_updation] Download progress: $pct% ($received/$total)');
+        }
+        onProgress?.call(received, total);
+      },
       options: Options(
         followRedirects: true,
         validateStatus: (status) => status != null && status < 400,
@@ -33,9 +42,12 @@ class ApkDownloader {
 
     final file = File(savePath);
     if (!await file.exists()) {
+      debugPrint('[in_app_updation] Download failed: file not found at $savePath');
       throw ApkDownloadException('Download failed: file not found');
     }
 
+    final size = await file.length();
+    debugPrint('[in_app_updation] Download complete: $savePath (${size ~/ 1024} KB)');
     return savePath;
   }
 }

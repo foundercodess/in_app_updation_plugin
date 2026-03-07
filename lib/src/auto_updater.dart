@@ -19,8 +19,12 @@ class AutoUpdaterImpl {
     required BuildContext context,
     required UpdateConfig config,
   }) async {
-    if (_isChecking) return;
+    if (_isChecking) {
+      debugPrint('[in_app_updation] Check already in progress, skipping');
+      return;
+    }
     _isChecking = true;
+    debugPrint('[in_app_updation] checkForUpdate started');
 
     try {
       final update = await UpdateService.checkForUpdate(config);
@@ -28,10 +32,12 @@ class AutoUpdaterImpl {
       if (!context.mounted) return;
 
       if (update == null) {
+        debugPrint('[in_app_updation] No update available');
         _isChecking = false;
         return;
       }
 
+      debugPrint('[in_app_updation] Showing update dialog for ${update.version}');
       if (config.showDialog) {
         showUpdateDialog(
           context: context,
@@ -41,11 +47,13 @@ class AutoUpdaterImpl {
         );
       }
     } on UpdateServiceException catch (e) {
+      debugPrint('[in_app_updation] UpdateServiceException: $e');
       _isChecking = false;
       if (context.mounted) {
         _showError(context, e.message);
       }
     } catch (e) {
+      debugPrint('[in_app_updation] Check failed: $e');
       _isChecking = false;
       if (context.mounted) {
         _showError(context, 'Failed to check for updates. Please try again.');
@@ -54,13 +62,15 @@ class AutoUpdaterImpl {
   }
 
   static Future<void> _performUpdate(BuildContext context, UpdateModel update) async {
+    debugPrint('[in_app_updation] _performUpdate started for ${update.version}');
     try {
       if (!context.mounted) return;
 
-      // Request install permission on Android 8+
       if (Platform.isAndroid) {
+        debugPrint('[in_app_updation] Requesting install permission');
         final status = await Permission.requestInstallPackages.request();
         if (!status.isGranted) {
+          debugPrint('[in_app_updation] Install permission denied');
           if (context.mounted) {
             _showError(
               context,
@@ -69,6 +79,7 @@ class AutoUpdaterImpl {
           }
           return;
         }
+        debugPrint('[in_app_updation] Install permission granted');
       }
 
       if (!context.mounted) return;
@@ -76,17 +87,21 @@ class AutoUpdaterImpl {
       final apkPath = await ApkDownloader.download(
         update.apkUrl,
         onProgress: (received, total) {
-          // Progress can be used for UI in future
+          // Progress logged in ApkDownloader
         },
       );
 
+      debugPrint('[in_app_updation] Triggering install: $apkPath');
       await InAppUpdationPluginPlatform.instance.installApk(apkPath);
+      debugPrint('[in_app_updation] Install intent sent successfully');
     } on ApkDownloadException catch (e) {
+      debugPrint('[in_app_updation] ApkDownloadException: $e');
       _isChecking = false;
       if (context.mounted) {
         _showError(context, e.message);
       }
     } catch (e) {
+      debugPrint('[in_app_updation] Install failed: $e');
       _isChecking = false;
       if (context.mounted) {
         final msg = e.toString().replaceFirst('Exception: ', '');
