@@ -35,17 +35,25 @@ class AutoUpdaterImpl {
 
       if (update == null) {
         debugPrint('[in_app_updation] No update available');
+        _isChecking = false;
         return;
       }
 
       debugPrint('[in_app_updation] Showing update dialog for ${update.version}');
       if (config.showDialog) {
-        showUpdateDialog(
-          context: context,
-          update: update,
-          onUpdate: () => _performUpdate(context, update),
-          onLater: () => _isChecking = false,
-        );
+        final delay = config.dialogDelay ?? const Duration(milliseconds: 300);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (delay.inMilliseconds > 0) {
+            await Future.delayed(delay);
+          }
+          if (!context.mounted) return;
+          showUpdateDialog(
+            context: context,
+            update: update,
+            onUpdate: () => _performUpdate(context, update),
+            onLater: () => _isChecking = false,
+          );
+        });
       }
     } on UpdateServiceException catch (e) {
       debugPrint('[in_app_updation] UpdateServiceException: $e');

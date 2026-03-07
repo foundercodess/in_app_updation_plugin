@@ -10,8 +10,13 @@ class UpdateConfig {
   /// Defaults to true. Set to false for custom UI handling.
   final bool showDialog;
 
+  /// Optional delay before showing the update dialog. Helps avoid memory spikes
+  /// on some devices (e.g. when Flutter/Impeller is under load). Default: 300ms.
+  final Duration? dialogDelay;
+
   const UpdateConfig({
     required this.apiUrl,
     this.showDialog = true,
+    this.dialogDelay,
   });
 }
