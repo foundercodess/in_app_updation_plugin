@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -33,7 +35,6 @@ class AutoUpdaterImpl {
 
       if (update == null) {
         debugPrint('[in_app_updation] No update available');
-        _isChecking = false;
         return;
       }
 
@@ -51,6 +52,19 @@ class AutoUpdaterImpl {
       _isChecking = false;
       if (context.mounted) {
         _showError(context, e.message);
+      }
+    } on DioException catch (e) {
+      debugPrint('[in_app_updation] DioException: ${e.type} ${e.message}');
+      _isChecking = false;
+      if (context.mounted) {
+        _showError(context,
+            'Network error. Check your connection and try again.');
+      }
+    } on TimeoutException catch (e) {
+      debugPrint('[in_app_updation] TimeoutException: $e');
+      _isChecking = false;
+      if (context.mounted) {
+        _showError(context, 'Request timed out. Please try again.');
       }
     } catch (e) {
       debugPrint('[in_app_updation] Check failed: $e');

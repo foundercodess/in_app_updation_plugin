@@ -8,7 +8,13 @@ import 'update_model.dart';
 /// Service that fetches update information from the remote API
 /// and compares with the current app version.
 class UpdateService {
-  static final Dio _dio = Dio();
+  static const Duration _timeout = Duration(seconds: 10);
+
+  static final Dio _dio = Dio(BaseOptions(
+    connectTimeout: _timeout,
+    receiveTimeout: _timeout,
+    sendTimeout: _timeout,
+  ));
 
   /// Fetches update info from [config.apiUrl] and returns [UpdateModel]
   /// if a newer version is available, otherwise returns null.
@@ -22,7 +28,10 @@ class UpdateService {
     debugPrint(
         '[in_app_updation] Current: version=${packageInfo.version} build=$currentBuildNumber');
 
-    final response = await _dio.get<Map<String, dynamic>>(config.apiUrl);
+    debugPrint('[in_app_updation] Calling API (timeout: ${_timeout.inSeconds}s)...');
+    final response = await _dio
+        .get<Map<String, dynamic>>(config.apiUrl)
+        .timeout(_timeout);
     debugPrint('[in_app_updation] API response: status=${response.statusCode}');
 
     if (response.data == null) {
