@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_updation_plugin/in_app_updation_plugin.dart';
 
+final _navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(const MyApp());
 }
@@ -12,6 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'In-App Updation Plugin Example',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -58,10 +61,9 @@ class _ExamplePageState extends State<ExamplePage> {
 
     await AutoUpdater.checkForUpdate(
       context: context,
-      config: const UpdateConfig(
-        // Local test API: run "cd test_api && npm install && npm start"
-        // Emulator: 10.0.2.2. Physical device: use your machine IP
+      config: UpdateConfig(
         apiUrl: 'http://10.0.2.2:3000/app/update',
+        navigatorKey: _navigatorKey,
       ),
     );
 

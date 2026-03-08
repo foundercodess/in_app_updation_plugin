@@ -23,17 +23,33 @@ dependencies:
 
 ## Usage
 
+**Recommended (production):** Pass `navigatorKey` for reliable dialog display.
+
 ```dart
-import 'package:flutter/material.dart';
-import 'package:in_app_updation_plugin/in_app_updation_plugin.dart';
+// main.dart
+final navigatorKey = GlobalKey<NavigatorState>();
+
+MaterialApp(
+  navigatorKey: navigatorKey,
+  home: HomeScreen(),
+);
 
 // In your widget:
+AutoUpdater.checkForUpdate(
+  context: context,
+  config: UpdateConfig(
+    apiUrl: "https://your-api.com/app/update",
+    navigatorKey: navigatorKey,  // ensures dialog shows reliably
+  ),
+);
+```
+
+**Simple usage:**
+```dart
 ElevatedButton(
   onPressed: () => AutoUpdater.checkForUpdate(
     context: context,
-    config: UpdateConfig(
-      apiUrl: "https://your-api.com/app/update",
-    ),
+    config: UpdateConfig(apiUrl: "https://your-api.com/app/update"),
   ),
   child: Text('Check for Update'),
 )
@@ -68,9 +84,10 @@ The plugin compares `build_number` with your app's build number from `package_in
 ```dart
 UpdateConfig(
   apiUrl: "https://example.com/app/update",  // Required
-  showDialog: true,  // Optional, default: true. Set false for custom UI.
-  autoDownload: false,  // When true: skip prompt, download immediately with progress bar.
-  useSnackBar: false,  // When true: use SnackBar instead of dialog (lighter, for low-memory devices).
+  navigatorKey: navigatorKey,  // Recommended: from MaterialApp for reliable dialog
+  showDialog: true,
+  autoDownload: false,
+  useSnackBar: false,  // Use true on low-memory devices if dialog crashes
 )
 ```
 

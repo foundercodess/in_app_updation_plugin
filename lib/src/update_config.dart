@@ -1,7 +1,16 @@
+import 'package:flutter/material.dart';
+
 /// Configuration for the in-app update check.
 ///
 /// Use [apiUrl] to specify the endpoint that returns update information.
 /// Set [showDialog] to false to handle update UI manually.
+///
+/// For reliable dialog display, pass [navigatorKey] from your MaterialApp:
+/// ```dart
+/// final navKey = GlobalKey<NavigatorState>();
+/// MaterialApp(navigatorKey: navKey, ...);
+/// UpdateConfig(apiUrl: '...', navigatorKey: navKey);
+/// ```
 class UpdateConfig {
   /// The API URL that returns update information in the expected format.
   final String apiUrl;
@@ -23,11 +32,16 @@ class UpdateConfig {
   /// Note: Android still requires user to tap "Install" on the system prompt.
   final bool autoDownload;
 
+  /// Root navigator key from MaterialApp. Ensures dialog displays reliably
+  /// regardless of where checkForUpdate is called. Recommended for production.
+  final GlobalKey<NavigatorState>? navigatorKey;
+
   const UpdateConfig({
     required this.apiUrl,
     this.showDialog = true,
     this.dialogDelay,
     this.useSnackBar = false,
     this.autoDownload = false,
+    this.navigatorKey,
   });
 }

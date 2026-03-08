@@ -20,7 +20,7 @@ class DownloadProgressOverlay {
             padding: const EdgeInsets.all(16),
             child: ValueListenableBuilder<double>(
               valueListenable: _progressNotifier!,
-              builder: (_, progress, __) => Column(
+              builder: (context, progress, child) => Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

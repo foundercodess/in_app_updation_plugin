@@ -45,22 +45,26 @@ class AutoUpdaterImpl {
         _performUpdateWithProgress(context, update, config);
       } else if (config.showDialog) {
         debugPrint('[in_app_updation] Showing update prompt for ${update.version}');
-        final delay = config.dialogDelay ?? const Duration(milliseconds: 500);
-        final navigatorContext = context;
-        void showWhenReady() {
-          if (!navigatorContext.mounted) return;
-          if (config.useSnackBar) {
-            _showUpdateSnackBar(navigatorContext, update);
-          } else {
-            showUpdateDialog(
-              context: navigatorContext,
-              update: update,
-              onUpdate: () => _performUpdate(navigatorContext, update),
-              onLater: () => _isChecking = false,
-            );
+        final dialogContext = config.navigatorKey?.currentContext ?? context;
+        if (!dialogContext.mounted) {
+          debugPrint('[in_app_updation] No valid context for dialog, using SnackBar');
+          _showUpdateSnackBar(context, update);
+        } else {
+          final delay = config.dialogDelay ?? const Duration(milliseconds: 100);
+          void showWhenReady() {
+            final ctx = config.navigatorKey?.currentContext ?? context;
+            if (!ctx.mounted) return;
+            if (config.useSnackBar) {
+              _showUpdateSnackBar(ctx, update);
+            } else {
+              showUpdateDialog(
+                context: ctx,
+                update: update,
+                onUpdate: () => _performUpdate(ctx, update),
+                onLater: () => _isChecking = false,
+              );
+            }
           }
-        }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
           if (delay.inMilliseconds > 0) {
             Future.delayed(delay, () {
               WidgetsBinding.instance.addPostFrameCallback((_) => showWhenReady());
@@ -68,7 +72,7 @@ class AutoUpdaterImpl {
           } else {
             WidgetsBinding.instance.addPostFrameCallback((_) => showWhenReady());
           }
-        });
+        }
       }
     } on UpdateServiceException catch (e) {
       debugPrint('[in_app_updation] UpdateServiceException: $e');
