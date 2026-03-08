@@ -14,9 +14,20 @@ class UpdateConfig {
   /// on some devices (e.g. when Flutter/Impeller is under load). Default: 300ms.
   final Duration? dialogDelay;
 
+  /// When true, show a SnackBar instead of a dialog. Use on devices where
+  /// the Material dialog causes crashes (e.g. low GPU memory). Lighter weight.
+  final bool useSnackBar;
+
+  /// When true, skip the Update/Later prompt and start download immediately.
+  /// User sees a progress bar, then install is triggered when done.
+  /// Note: Android still requires user to tap "Install" on the system prompt.
+  final bool autoDownload;
+
   const UpdateConfig({
     required this.apiUrl,
     this.showDialog = true,
     this.dialogDelay,
+    this.useSnackBar = false,
+    this.autoDownload = false,
   });
 }

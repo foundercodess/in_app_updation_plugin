@@ -69,15 +69,20 @@ The plugin compares `build_number` with your app's build number from `package_in
 UpdateConfig(
   apiUrl: "https://example.com/app/update",  // Required
   showDialog: true,  // Optional, default: true. Set false for custom UI.
+  autoDownload: false,  // When true: skip prompt, download immediately with progress bar.
+  useSnackBar: false,  // When true: use SnackBar instead of dialog (lighter, for low-memory devices).
 )
 ```
 
 ## Android Setup
 
 The plugin automatically adds:
+- `INTERNET` permission (required for API calls and APK download)
 - `REQUEST_INSTALL_PACKAGES` permission
 - `WRITE_EXTERNAL_STORAGE` (for Android ≤ 9)
 - FileProvider for secure APK installation (Android 7+)
+
+**Release build not working?** Ensure your app's `AndroidManifest.xml` has `android:usesCleartextTraffic="true"` in `<application>` if using HTTP URLs (Android 9+ blocks cleartext by default).
 
 Ensure your app's `build_number` in `pubspec.yaml` is set correctly, as it's used for version comparison.
 

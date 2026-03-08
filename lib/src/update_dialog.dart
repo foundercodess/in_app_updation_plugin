@@ -14,6 +14,7 @@ void showUpdateDialog({
 }) {
   showDialog<void>(
     context: context,
+    useRootNavigator: true,
     barrierDismissible: !update.forceUpdate,
     builder: (context) => PopScope(
       canPop: !update.forceUpdate,

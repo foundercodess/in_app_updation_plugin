@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../in_app_updation_plugin_platform_interface.dart';
 import 'apk_downloader.dart';
+import 'download_progress_overlay.dart';
 import 'update_config.dart';
 import 'update_dialog.dart';
 import 'update_model.dart';
@@ -39,20 +40,34 @@ class AutoUpdaterImpl {
         return;
       }
 
-      debugPrint('[in_app_updation] Showing update dialog for ${update.version}');
-      if (config.showDialog) {
-        final delay = config.dialogDelay ?? const Duration(milliseconds: 300);
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (delay.inMilliseconds > 0) {
-            await Future.delayed(delay);
+      if (config.autoDownload) {
+        debugPrint('[in_app_updation] Auto-download starting for ${update.version}');
+        _performUpdateWithProgress(context, update, config);
+      } else if (config.showDialog) {
+        debugPrint('[in_app_updation] Showing update prompt for ${update.version}');
+        final delay = config.dialogDelay ?? const Duration(milliseconds: 500);
+        final navigatorContext = context;
+        void showWhenReady() {
+          if (!navigatorContext.mounted) return;
+          if (config.useSnackBar) {
+            _showUpdateSnackBar(navigatorContext, update);
+          } else {
+            showUpdateDialog(
+              context: navigatorContext,
+              update: update,
+              onUpdate: () => _performUpdate(navigatorContext, update),
+              onLater: () => _isChecking = false,
+            );
           }
-          if (!context.mounted) return;
-          showUpdateDialog(
-            context: context,
-            update: update,
-            onUpdate: () => _performUpdate(context, update),
-            onLater: () => _isChecking = false,
-          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (delay.inMilliseconds > 0) {
+            Future.delayed(delay, () {
+              WidgetsBinding.instance.addPostFrameCallback((_) => showWhenReady());
+            });
+          } else {
+            WidgetsBinding.instance.addPostFrameCallback((_) => showWhenReady());
+          }
         });
       }
     } on UpdateServiceException catch (e) {
@@ -80,6 +95,85 @@ class AutoUpdaterImpl {
       if (context.mounted) {
         _showError(context, 'Failed to check for updates. Please try again.');
       }
+    }
+  }
+
+  static Future<void> _performUpdateWithProgress(
+      BuildContext context, UpdateModel update, UpdateConfig config) async {
+    debugPrint('[in_app_updation] _performUpdateWithProgress for ${update.version}');
+    try {
+      if (!context.mounted) return;
+
+      if (Platform.isAndroid) {
+        final status = await Permission.requestInstallPackages.request();
+        if (!status.isGranted) {
+          if (context.mounted) {
+            _showError(
+                context, 'Install permission is required to update the app.');
+          }
+          _isChecking = false;
+          return;
+        }
+      }
+
+      if (!context.mounted) return;
+
+      if (!config.useSnackBar) {
+        DownloadProgressOverlay.show(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Downloading update...'),
+            duration: Duration(days: 1),
+          ),
+        );
+      }
+
+      final apkPath = await ApkDownloader.download(
+        update.apkUrl,
+        onProgress: (received, total) {
+          if (total > 0 && context.mounted) {
+            DownloadProgressOverlay.updateProgress(received / total);
+          }
+        },
+      );
+
+      if (!context.mounted) return;
+      if (!config.useSnackBar) {
+        DownloadProgressOverlay.dismiss(context);
+      } else {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+
+      debugPrint('[in_app_updation] Triggering install: $apkPath');
+      await InAppUpdationPluginPlatform.instance.installApk(apkPath);
+      debugPrint('[in_app_updation] Install intent sent successfully');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Update ready. Tap Install to complete.')),
+        );
+      }
+    } on ApkDownloadException catch (e) {
+      if (context.mounted) {
+        if (!config.useSnackBar) {
+          DownloadProgressOverlay.dismiss(context);
+        } else {
+          ScaffoldMessenger.of(context).clearSnackBars();
+        }
+        _showError(context, e.message);
+      }
+    } catch (e) {
+      debugPrint('[in_app_updation] Auto-download failed: $e');
+      if (context.mounted) {
+        if (!config.useSnackBar) {
+          DownloadProgressOverlay.dismiss(context);
+        } else {
+          ScaffoldMessenger.of(context).clearSnackBars();
+        }
+        _showError(context, 'Download failed. Please try again.');
+      }
+    } finally {
+      _isChecking = false;
     }
   }
 
@@ -139,5 +233,28 @@ class AutoUpdaterImpl {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  /// Lightweight SnackBar prompt instead of dialog. Use when dialog causes
+  /// crashes on low-memory devices (e.g. some Nothing/Impeller setups).
+  static void _showUpdateSnackBar(BuildContext context, UpdateModel update) {
+    final message = update.message.isNotEmpty
+        ? update.message
+        : 'Update available${update.version.isNotEmpty ? ': ${update.version}' : ''}.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: update.forceUpdate
+            ? const Duration(days: 365)
+            : const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Update',
+          onPressed: () => _performUpdate(context, update),
+        ),
+      ),
+    );
+    if (!update.forceUpdate) {
+      _isChecking = false;
+    }
   }
 }
